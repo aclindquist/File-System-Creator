@@ -1,0 +1,122 @@
+#include <fuse.h>               //must install fuse
+#include <iostream>
+#include <string.h>
+#include <errno.h>
+#include <vector>
+#include <string>
+#include "../libWad/Wad.h"               
+#define FUSE_USE_VERSION 26
+#define _FILE_OFFSET_BITS 64
+using namespace std;
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <syslog.h>
+
+Wad* wadfs;         //wad object
+
+static int getattr_callback(const char* path, struct stat* stbuf)  //from https://engineering.facile.it/blog/eng/write-filesystem-fuse/
+{
+   memset(stbuf,0,sizeof(struct stat));
+   string Path(path);
+
+   if(wadfs->isContent(Path)){
+    stbuf->st_mode = S_IFREG | 0444;
+    stbuf->st_nlink = 1;
+    stbuf->st_size = wadfs->getSize(Path);
+    return 0;
+   }
+   if(wadfs->isDirectory(Path)){
+   stbuf->st_mode = S_IFDIR | 0555;    //runs if directory 
+   stbuf-> st_nlink = 2;
+   return 0;
+   }
+   return -ENOENT;
+
+}
+
+static int readdir_callback(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {      //from https://engineering.facile.it/blog/eng/write-filesystem-fuse/
+  string Path(path);
+  (void) offset;
+  (void) fi;
+
+  filler(buf, ".", NULL, 0);
+  filler(buf, "..", NULL, 0);
+  
+  if(Path.length() >=1 && Path.substr(Path.length()-1) != "/")
+  {
+    Path = Path + "/";
+  }
+  if(Path.size() == 0)
+  {
+    Path = "/";
+  }
+
+  vector<string> entries;
+
+
+  
+    wadfs->getDirectory(Path, &entries);
+       
+    for(string entry:entries){
+        filler(buf,entry.c_str(), NULL,0);
+    }
+
+
+  return 0;
+}
+
+static int open_callback(const char * path,struct fuse_file_info* var) {
+   return 0;
+}
+
+static int read_callback(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info*fi) {
+
+        return wadfs->getContents(path, buf, size, offset);
+    
+
+    return 0;             //might be incorrect, not sure what to return
+
+}
+
+static int release_callback(const char *path, struct fuse_file_info *fi){
+    return 0;
+}
+
+static int releasedir_callback(const char *path, struct fuse_file_info *fi){
+    return 0;
+}
+
+static int opendir_callback(const char *path, struct fuse_file_info *fi){
+    return 0;
+}
+
+
+struct fuse_operations fuse_example_operations;   
+    
+
+int main(int argc, char* argv[]){
+    fuse_example_operations.getattr = getattr_callback;
+    fuse_example_operations.open = open_callback;
+    fuse_example_operations.read = read_callback;
+    fuse_example_operations.readdir= readdir_callback;
+    fuse_example_operations.opendir = opendir_callback;
+    fuse_example_operations.release = release_callback;
+    fuse_example_operations.releasedir = releasedir_callback;
+
+    wadfs = Wad::loadWad(argv[1]);
+    argv[1]=argv[2];
+    argv[2]==NULL;
+
+    int args = argc;
+    mkdir("/home/reptilian/mountdir",ACCESSPERMS);
+    return fuse_main(args - 1, argv, &fuse_example_operations,NULL);
+    
+} 
+
+    //do we need to read with fuse or just print partial contents and which parts - no reading al prints for you
+    //is ls the regular implementation or do we change it with fuse - its normal
+    //-al what are we getting graded on - that and the wad dump
