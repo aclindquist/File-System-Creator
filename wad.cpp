@@ -7,18 +7,19 @@
 #include <vector>
 #include <string>
 #include <sstream>
-#include "wad.h"
+#include <unistd.h>
+#include "Wad.h"
 using namespace std;
 
+string dir = get_current_dir_name();
+string wadName; 
 
 Wad::Wad()
-{
-	//Descriptor root;
-	//root.name = "/";
-	///directory.push_back(root);    
+{   
 }
 Wad* Wad::loadWad(const std::string& path) 
 {
+	wadName = path.substr(path.find_last_of("/")+1);
 	int num;
 	int descriptorOff;
 	int numOfLevels = 0;
@@ -284,12 +285,29 @@ int Wad::getContents(const std::string& path, char* buffer, int length, int offs
 	*/
 	fstream test2;
 
-	test2.open(path, ios::in | ios::out);
+	test2.open( dir + "/" + wadName, ios::in | ios::binary);
+	std::size_t found = path.find_last_of("/\\");
+	string Path = path.substr(0, found);
+	string File = path.substr(found + 1);
+	found = Path.find_last_of("/\\");
+    string Direc = Path.substr(found + 1);
+	if(Direc == "")
+	{
+		Direc = "/";
+	}
+	if(Direc == "mountdir")
+	{
+		Direc = "/";
+	}
+	length = translator[File + ("_" + Direc)].length;
+	offset =translator[File + ("_" + Direc)].offset;
+	
 	test2.seekg(offset, ios::beg);
-	test2.read(buffer, length);
+	test2.read(buffer, 	length);
+	
+	test2.close();
 	return length;
 
-	return -1;
 }
 
 int Wad::getDirectory(const std::string& path, std::vector<std::string> *directory) {
@@ -298,12 +316,15 @@ int Wad::getDirectory(const std::string& path, std::vector<std::string> *directo
 		*directory = directories["/"];
 		return directories["/"].size();
 	}
-	string name = path.substr(0, path.length() - 1);
+	
+	string name = path.substr(0, path.length()-1);
+	
 	std::size_t found = name.find_last_of("/\\");
 
     name = name.substr(found+1, name.length()-found);
-	
+
 	if (directories.find(name) == directories.end()) {
+		
 		return -1;
 	}
 	
@@ -311,6 +332,7 @@ int Wad::getDirectory(const std::string& path, std::vector<std::string> *directo
 	return directories.at(name).size();
 
 }
+
 
 
 
