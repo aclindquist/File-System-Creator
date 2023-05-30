@@ -1,8 +1,8 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include<string>
-#include<vector>
+#include <string>
+#include <vector>
 #include <fstream>
 #include <vector>
 #include <string>
